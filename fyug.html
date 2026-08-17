@@ -79,7 +79,7 @@
         .sticky.top-0.bg-white\\/90, .sticky.top-0[class*="bg-white/90"], .sticky.top-0, body #root .sticky.top-0 { background-color: #fff1df !important; }
         .sticky.top-0 .bg-gray-100 { background-color: #ffffff !important; }
         .sticky.top-0 .bg-gray-100:hover { background-color: #ffffff !important; }
-        .sticky.top-0 > div:last-child button, .sticky.top-0 button:has(.fa-bell) { background-color: #ffffff !important; color: #2f2a24 !important; }
+        .sticky.top-0 > div:last-child button, .sticky.top-0 button:has(.fa-bell) { background-color: #ffffff !important; }
         .fixed.bottom-0.bg-white { background-color: #fff1df !important; border-top-color: #eadcc4 !important; }
         /* Search surfaces only: white outside, cream inside the marked boxes/cards */
         .p-4.pb-24.animate-fade-in.bg-gray-50 { background-color: #ffffff !important; }
@@ -246,12 +246,10 @@
             // Gallery States
             const [lightboxIndex, setLightboxIndex] = useState(null);
             const [galleryFilter, setGalleryFilter] = useState(null);
-            const [galleryYear, setGalleryYear] = useState('ทั้งหมด');
             const galleryRef = useRef(null);
 
             // New Features States
             const [showTicket, setShowTicket] = useState(null); 
-            const [registrationForm, setRegistrationForm] = useState(null);
             const [showShareMenu, setShowShareMenu] = useState(null); 
             const [showBuddyModal, setShowBuddyModal] = useState(null);
             const [showRewardModal, setShowRewardModal] = useState(false); // Modal แลกของรางวัล
@@ -269,7 +267,7 @@
             const renderAvatarVisual = (sizeClass = 'text-2xl') => profileAvatar === 'empty' ? <div className="w-full h-full bg-gray-100 text-gray-400 rounded-full flex items-center justify-center"><i className={`fa-regular fa-user ${sizeClass}`}></i></div> : profileAvatar.startsWith('data:image/') ? <img src={profileAvatar} alt="รูปโปรไฟล์" className="w-full h-full object-cover rounded-full" /> : <i className={`fa-solid ${profileAvatar} ${sizeClass}`}></i>;
 
             // 🛡️ ระบบล็อกพื้นหลัง (Body Scroll Lock)
-            const isAnyModalOpen = viewingEvent || showAuth || showTicket || registrationForm || showShareMenu || showBuddyModal || showRewardModal || showAvatarModal || organizerModal || lightboxIndex !== null;
+            const isAnyModalOpen = viewingEvent || showAuth || showTicket || showShareMenu || showBuddyModal || showRewardModal || showAvatarModal || organizerModal || lightboxIndex !== null;
             useEffect(() => {
                 if (isAnyModalOpen) document.body.style.overflow = 'hidden';
                 else document.body.style.overflow = 'auto';
@@ -312,33 +310,19 @@
             const handleRegister = (eventId) => {
                 if (!user) { showToast('กรุณาเข้าสู่ระบบก่อนลงทะเบียนเข้าร่วมกิจกรรม'); setShowAuth(true); return; }
                 if (!registeredEvents.includes(eventId)) {
-                    const event = [...mockEvents, ...userEvents].find(item => item.id === eventId);
-                    if (event) setRegistrationForm({ event });
+                    const nextRegistered = [...registeredEvents, eventId];
+                    setRegisteredEvents(nextRegistered);
+                    if (user) saveAccountData(user.email, { registeredEvents: nextRegistered, likedEvents, redeemedHours });
+                    showToast('ลงทะเบียนสำเร็จ! ตั๋วของคุณอยู่ในหน้าโปรไฟล์ ✅');
                 }
-            };
-
-            const handleConfirmRegistration = (formData) => {
-                if (!user || !registrationForm) return;
-                const event = registrationForm.event;
-                if (registeredEvents.includes(event.id)) { setRegistrationForm(null); return; }
-                const nextRegistered = [...registeredEvents, event.id];
-                const currentData = loadAccountData(user.email);
-                const nextProfiles = { ...(currentData.registrationProfiles || {}), [event.id]: formData };
-                setRegisteredEvents(nextRegistered);
-                saveAccountData(user.email, { registeredEvents: nextRegistered, registrationProfiles: nextProfiles, likedEvents, redeemedHours });
-                setRegistrationForm(null);
-                showToast('ลงทะเบียนสำเร็จ! ข้อมูลผู้เข้าร่วมถูกบันทึกแล้ว ✅');
             };
 
             const handleCancelRegistration = (eventId) => {
                 if (!user) return;
                 if (!window.confirm('ต้องการยกเลิกการลงทะเบียนกิจกรรมนี้ใช่ไหม')) return;
                 const nextRegistered = registeredEvents.filter(id => id !== eventId);
-                const currentData = loadAccountData(user.email);
-                const nextProfiles = { ...(currentData.registrationProfiles || {}) };
-                delete nextProfiles[eventId];
                 setRegisteredEvents(nextRegistered);
-                saveAccountData(user.email, { registeredEvents: nextRegistered, registrationProfiles: nextProfiles, likedEvents, redeemedHours });
+                saveAccountData(user.email, { registeredEvents: nextRegistered, likedEvents, redeemedHours });
                 setShowTicket(null);
                 showToast('ยกเลิกการลงทะเบียนแล้ว');
             };
@@ -514,31 +498,6 @@
                 );
             };
 
-            const renderRegistrationForm = () => {
-                if (!registrationForm) return null;
-                const event = registrationForm.event;
-                return (
-                    <div className="fixed inset-0 z-[10000] flex items-end sm:items-center justify-center p-0 sm:p-6 bg-black/60 backdrop-blur-sm animate-fade-in" onClick={() => setRegistrationForm(null)}>
-                        <form onSubmit={(e) => { e.preventDefault(); const data = new FormData(e.currentTarget); handleConfirmRegistration({ fullName: data.get('fullName').toString().trim(), year: data.get('year').toString(), participantType: data.get('participantType').toString(), faculty: data.get('faculty').toString().trim(), contact: data.get('contact').toString().trim() }); }} onClick={e => e.stopPropagation()} className="bg-white w-full max-w-[480px] rounded-t-3xl sm:rounded-3xl p-5 shadow-2xl animate-slide-up-modal">
-                            <div className="flex items-start justify-between mb-4">
-                                <div><div className="text-[10px] font-bold text-kku-brick uppercase tracking-widest">Registration Profile</div><h2 className="font-bold text-lg text-gray-800">ข้อมูลผู้เข้าร่วมกิจกรรม</h2><p className="text-xs text-gray-500 mt-1 line-clamp-1">{event.title}</p></div>
-                                <button type="button" onClick={() => setRegistrationForm(null)} className="w-8 h-8 rounded-full bg-gray-100 text-gray-500"><i className="fa-solid fa-times"></i></button>
-                            </div>
-                            <div className="space-y-3">
-                                <label className="block text-xs font-bold text-gray-700">ชื่อ–นามสกุล<span className="text-red-500"> *</span><input name="fullName" required defaultValue={user?.name || ''} placeholder="กรอกชื่อและนามสกุล" className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-kku-brick" /></label>
-                                <div className="grid grid-cols-2 gap-3">
-                                    <label className="block text-xs font-bold text-gray-700">ชั้นปี<select name="year" required defaultValue="ชั้นปี 1" className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm bg-white"><option>ชั้นปี 1</option><option>ชั้นปี 2</option><option>ชั้นปี 3</option><option>ชั้นปี 4</option><option>บัณฑิตศึกษา</option><option>ไม่ใช่นักศึกษา</option></select></label>
-                                    <label className="block text-xs font-bold text-gray-700">สถานะผู้เข้าร่วม<select name="participantType" required defaultValue="นักศึกษา มข." className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm bg-white"><option>นักศึกษา มข.</option><option>บุคลากร มข.</option><option>บุคคลภายนอก</option></select></label>
-                                </div>
-                                <label className="block text-xs font-bold text-gray-700">คณะ/หน่วยงาน<span className="text-gray-400 font-normal"> (ถ้ามี)</span><input name="faculty" placeholder="เช่น คณะวิศวกรรมศาสตร์" className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-kku-brick" /></label>
-                                <label className="block text-xs font-bold text-gray-700">เบอร์โทรศัพท์หรืออีเมลสำหรับติดต่อ<span className="text-gray-400 font-normal"> (ไม่บังคับ)</span><input name="contact" placeholder="เช่น 08x-xxx-xxxx หรือ name@email.com" className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-kku-brick" /><span className="block text-[10px] text-gray-400 mt-1">ใช้สำหรับติดต่อเกี่ยวกับกิจกรรมเท่านั้น</span></label>
-                            </div>
-                            <div className="flex gap-3 mt-5"><button type="button" onClick={() => setRegistrationForm(null)} className="flex-1 py-3 rounded-xl bg-gray-100 text-gray-600 font-bold text-sm">ยกเลิก</button><button type="submit" className="flex-1 py-3 rounded-xl bg-kku-brick text-white font-bold text-sm shadow-md active:scale-95">ยืนยันการลงทะเบียน</button></div>
-                        </form>
-                    </div>
-                );
-            };
-
             const renderTicketModal = () => {
                 if (!showTicket) return null;
                 const event = showTicket;
@@ -683,11 +642,11 @@
                     
                     <div className="flex items-center gap-3 relative">
                         <div className="flex items-center gap-2 relative">
-                            <button onClick={() => user ? setOrganizerMode(!organizerMode) : setShowAuth(true)} style={{ backgroundColor: organizerMode ? '#f97316' : '#ffffff', color: organizerMode ? '#ffffff' : '#2f2a24' }} className={`text-[10px] font-bold px-3 py-1.5 rounded-full transition-colors flex items-center gap-1.5 ${organizerMode ? 'bg-orange-500 text-white' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'}`}>
+                            <button onClick={() => user ? setOrganizerMode(!organizerMode) : setShowAuth(true)} className={`text-[10px] font-bold px-3 py-1.5 rounded-full transition-colors flex items-center gap-1.5 ${organizerMode ? 'bg-orange-500 text-white' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'}`}>
                                 <i className="fa-solid fa-bullhorn"></i> {organizerMode ? 'โหมดนักศึกษา' : 'โหมดผู้จัดงาน'}
                             </button>
                             <button onClick={() => user ? setShowAccountMenu(!showAccountMenu) : setShowAuth(true)} 
-                                    style={{ backgroundColor: '#ffffff', color: '#2f2a24' }} className="bg-gray-100 hover:bg-gray-200 text-[10px] font-bold px-3 py-1.5 rounded-full text-gray-700 transition-colors flex items-center gap-1.5">
+                                    className="bg-gray-100 hover:bg-gray-200 text-[10px] font-bold px-3 py-1.5 rounded-full text-gray-700 transition-colors flex items-center gap-1.5">
                                 {user ? (
                                     <><div className="w-4 h-4 bg-kku-brick text-white rounded-full flex items-center justify-center text-[8px] overflow-hidden">{renderAvatarVisual('text-[8px]')}</div> <span className="max-w-[50px] truncate">{user.name}</span></>
                                 ) : (
@@ -709,7 +668,7 @@
                         </div>
                         
                         <div>
-                            <button onClick={() => setShowNotifications(!showNotifications)} style={{ color: '#2f2a24' }} className="text-gray-600 text-xl relative focus:outline-none flex items-center">
+                            <button onClick={() => setShowNotifications(!showNotifications)} className="text-gray-600 text-xl relative focus:outline-none flex items-center">
                                 <i className="fa-regular fa-bell"></i>
                                 <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white"></span>
                             </button>
@@ -963,8 +922,7 @@
             };
 
             const renderHome = () => {
-                const displayedPhotos = pastActivities.filter(x => (!galleryFilter || x.eventId === galleryFilter) && (galleryYear === 'ทั้งหมด' || String(x.year) === galleryYear));
-                const galleryYears = ['ทั้งหมด', ...new Set(pastActivities.map(item => String(item.year)))];
+                const displayedPhotos = galleryFilter ? pastActivities.filter(x => x.eventId === galleryFilter) : pastActivities;
 
                 return (
                     <div className="p-4 pb-24 animate-slide-up space-y-6">
@@ -995,17 +953,14 @@
                                     <h3 className="font-bold text-gray-800 flex items-center gap-2"><i className="fa-solid fa-images text-kku-brick"></i> ภาพกิจกรรมที่ผ่านมา</h3>
                                     <p className="text-[10px] text-gray-500 uppercase tracking-widest">Campus Archive</p>
                                 </div>
-                                <div className="flex items-center gap-2">
-                                    <select value={galleryYear} onChange={e => setGalleryYear(e.target.value)} className="text-[10px] font-bold bg-white border border-gray-200 text-gray-700 px-2.5 py-1.5 rounded-full focus:outline-none focus:border-kku-brick"><option value="ทั้งหมด">ทุกปี</option>{galleryYears.filter(year => year !== 'ทั้งหมด').map(year => <option key={year} value={year}>ปี {year}</option>)}</select>
-                                    {galleryFilter && (
-                                        <button onClick={() => setGalleryFilter(null)} className="text-[10px] font-bold bg-red-50 text-kku-red border border-red-100 px-3 py-1.5 rounded-full flex items-center gap-1 active:scale-95 transition-transform"><i className="fa-solid fa-times"></i> ดูทั้งหมด</button>
-                                    )}
-                                </div>
+                                {galleryFilter && (
+                                    <button onClick={() => setGalleryFilter(null)} className="text-[10px] font-bold bg-red-50 text-kku-red border border-red-100 px-3 py-1.5 rounded-full flex items-center gap-1 active:scale-95 transition-transform"><i className="fa-solid fa-times"></i> ดูทั้งหมด</button>
+                                )}
                             </div>
 
                             <div className="grid grid-cols-2 gap-3">
                                 {displayedPhotos.map((item, idx) => (
-                                    <div key={idx} onClick={() => setLightboxIndex(pastActivities.findIndex(photo => photo === item))} className="relative h-[160px] rounded-2xl overflow-hidden bg-gray-200 cursor-pointer shadow-sm active:scale-95 transition-transform group">
+                                    <div key={idx} onClick={() => setLightboxIndex(idx)} className="relative h-[160px] rounded-2xl overflow-hidden bg-gray-200 cursor-pointer shadow-sm active:scale-95 transition-transform group">
                                         <img src={item.image} onError={handleImageError} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                                         <div className="absolute inset-0 bg-gradient-to-t from-[#0d1623]/80 via-transparent to-transparent"></div>
                                         <div className="absolute bottom-3 left-3 right-3 text-white">
@@ -1317,7 +1272,6 @@
                     
                     {renderLightbox()}
                     {renderTicketModal()}
-                    {renderRegistrationForm()}
                     {renderShareMenu()}
                     {renderRewardModal()} {/* เพิ่ม Modal แลกรางวัล */}
                     {renderAvatarModal()}
